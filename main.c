@@ -1,4 +1,4 @@
-#include <stdio.h>
+	#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
@@ -15,6 +15,7 @@
 #define CHARS_PER_LINE 16
 #define CHARS_PER_LINE 16
 
+/* segments are stored in alphabetical order in bits, meaning bit0->a, bit1->b, ..., bit15->u */
 uint16_t charset[CHARSET_SIZE] = {
 	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -23,7 +24,27 @@ uint16_t charset[CHARSET_SIZE] = {
 	0x0CF7, 0x88CF, 0x2A3F, 0x00F3, 0x223F, 0x80F3, 0x80C3, 0x08FB, 0x88CC, 0x2233, 0x007C, 0x94C0, 0x00F0, 0x05CC, 0x11CC, 0x00FF, // @ABCDEFGHIJKLMNO
 	0x88C7, 0x10FF, 0x98C7, 0x88BB, 0x2203, 0x00FC, 0x44C0, 0x50CC, 0x5500, 0x2500, 0x4433, 0x2212, 0x1100, 0x2221, 0x0000, 0x0030, // PQRSTUVWXYZ[\]^_
 	0x0100, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, // `abcdefghijklmno
-	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xA212, 0x2200, 0x2A21, 0x0000, 0x0000, // pqrstuvwxyz{|}~!
+	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0xA212, 0x2200, 0x2A21, 0x0000, 0x0000, // pqrstuvwxyz{|}~
+};
+
+/* maps segments to actual bits in chip */
+uint16_t chip_bits[16] = {
+	0,	// A
+	1,	// B
+	3,	// C
+	6,	// D
+	7,	// E
+	8,	// F
+	9,	// G
+	13,	// H
+	14,	// K
+	15,	// M
+	2,	// N
+	4,	// R
+	5,	// P
+	11,	// S
+	10,	// T
+	12,	// U
 };
 
 #ifdef CHAR_SMALL
@@ -49,6 +70,37 @@ const char* digit[] = {
 const char* bitmapping = "abcdefghkmnprstu";
 const char* symbols = "--||--||\\|/-\\|/-";
 
+void display_mapped_charset(uint16_t* charset)
+{
+
+	printf ("uint16_t charset[%u] = {\n", CHARSET_SIZE);
+
+	for (int i = 0; i < CHARSET_SIZE; ++i) {
+		if (i % 16 == 0) {
+			printf("\t");
+		}
+
+		uint16_t val = 0;
+		for (int bit = 0; bit < 16; ++bit) {
+			if (charset[i] & (1<<bit))
+				val |= (1<<chip_bits[bit]);
+		}
+
+		printf("0x%04hX, ", val);
+
+		if (i % 16 == 15) {
+			printf("// ");
+			for (int c = (i/16)*16; c< ((i+1)/16)*16; ++c) {
+				printf("%c", c >= 32 ? c : ' ');
+			}
+
+			printf("\n");
+		}
+	}
+
+	printf("};\n");
+}
+
 char bit2segment(int bit) {
 	return bitmapping[bit];
 }
@@ -73,7 +125,7 @@ void display_character_line(int row, uint16_t segments)
 			if (segments & (1 << segment)) {
 				printf(COLOR_BOLDRED);
 			} else {
-				printf(COLOR_GRAY);				
+				printf(COLOR_GRAY);
 			}
 			printf("%c", symbols[segment]);
 			printf(COLOR_RESET);
@@ -85,7 +137,7 @@ void display_character(uint16_t segments)
 {
 	for (int row = 0; row < sizeof(digit)/sizeof(char*); ++row) {
 		display_character_line(row, segments);
-		printf("\n");		
+		printf("\n");
 	}
 }
 
@@ -122,6 +174,8 @@ void display_charset(uint16_t* charset)
 
 int main(int argc, char** argv) {
 	display_charset(charset);
+
+	display_mapped_charset(charset);
 
 	return EXIT_SUCCESS;
 }
